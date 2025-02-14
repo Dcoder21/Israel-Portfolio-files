@@ -1,70 +1,59 @@
 import tkinter as tk
 from tkinter import messagebox
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-# Parent Class: General Converter
-class Converter:
-    def __init__(self):
-        pass  # Can be extended for other conversion types
 
-    def convert(self, value):
-        raise NotImplementedError("Subclasses must implement conversion logic")
-# Child Class (Temperature converter)
-class TemperatureConverter(Converter):
+
+class TemperatureConverter:
     def __init__(self, root):
         self.root = root
-        self.root.title("Temperature Converter")
+        self.root.geometry('350x150')
+        self.root.title('Temperature Converter')
 
-        # Label and Entry for temperature input
-        self.label = tk.Label(root, text="Enter Temperature:")
-        self.label.pack(pady=5)
+        # Variables
+        self.input_var = tk.StringVar()
+        self.unit_var = tk.StringVar(value="Celsius")
 
-        self.temp_entry = tk.Entry(root)
-        self.temp_entry.pack(pady=5)
+        self.create_widgets()
+        self.setup_grid_resizing()
 
-        # Conversion option
-        self.var = tk.StringVar(value="F to C")
-        self.radio1 = tk.Radiobutton(root, text="Fahrenheit to Celsius", variable=self.var, value="F to C")
-        self.radio2 = tk.Radiobutton(root, text="Celsius to Fahrenheit", variable=self.var, value="C to F")
-        self.radio1.pack()
-        self.radio2.pack()
+    def create_widgets(self):
+        """Creates the UI components."""
+        tk.Label(self.root, text="Enter Temperature:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
-        # Convert Button
-        self.convert_button = tk.Button(root, text="Convert", command=self.convert_temperature)
-        self.convert_button.pack(pady=10)
+        self.entry = tk.Entry(self.root, textvariable=self.input_var)
+        self.entry.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        self.entry.bind("<Return>", lambda event: self.convert())  # Press Enter to convert
 
-        # Label to display result
-        self.result_label = tk.Label(root, text="")
-        self.result_label.pack(pady=5)
+        tk.OptionMenu(self.root, self.unit_var, "Celsius", "Fahrenheit").grid(row=0, column=2, padx=10, pady=10)
 
-    def convert_temperature(self):
+        self.result_label = tk.Label(self.root, text="", font=("Arial", 12, "bold"))
+        self.result_label.grid(row=2, column=0, columnspan=3, pady=10)
+
+        convert_button = tk.Button(self.root, text="Convert", command=self.convert)
+        convert_button.grid(row=1, column=0, columnspan=3, pady=10, sticky="ew")
+
+    def setup_grid_resizing(self):
+        """Configures grid for better UI resizing."""
+        self.root.grid_columnconfigure(1, weight=1)
+        self.root.grid_rowconfigure(2, weight=1)
+
+    def convert(self):
+        """Converts the temperature between Celsius and Fahrenheit."""
         try:
-            temp = float(self.temp_entry.get())
-            if self.var.get() == "F to C":
-                converted_temp = (temp - 32) * 5 / 9
-                conversion_text = f"{temp}°F = {converted_temp:.2f}°C"
+            temp = float(self.input_var.get().strip())  # Remove spaces & convert input
+            unit = self.unit_var.get()
+
+            if unit == "Celsius":
+                result = (temp * 9 / 5) + 32
+                self.result_label.config(text=f"{result:.1f} °F")
             else:
-                converted_temp = (temp * 9 / 5) + 32
-                conversion_text = f"{temp}°C = {converted_temp:.2f}°F"
+                result = (temp - 32) * 5 / 9
+                self.result_label.config(text=f"{result:.1f} °C")
 
-            self.result_label.config(text=conversion_text)
-            self.plot_temperature(temp, converted_temp)
         except ValueError:
-            messagebox.showerror("Error", "Please enter a valid number")
+            self.result_label.config(text="Invalid input!")
+            messagebox.showerror("Input Error", "Please enter a valid number.")
 
-    def plot_temperature(self, original, converted):
-        # Create a bar chart to compare temperatures
-        fig, ax = plt.subplots(figsize=(4, 3))
-        ax.bar(["Original", "Converted"], [original, converted], color=['blue', 'red'])
-        ax.set_ylabel("Temperature")
-        ax.set_title("Temperature Conversion")
 
-        # Embed the plot into Tkinter
-        canvas = FigureCanvasTkAgg(fig, master=self.root)
-        canvas.draw()
-        canvas.get_tk_widget().pack()
-
-# Run the application
 if __name__ == "__main__":
     root = tk.Tk()
     app = TemperatureConverter(root)
