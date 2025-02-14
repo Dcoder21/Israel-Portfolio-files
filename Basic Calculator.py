@@ -4,72 +4,132 @@ from tkinter import messagebox
 class Calculator:
     def __init__(self, root):
         self.root = root
-        self.root.title("Calculator")
-        self.root.resizable(False, False)
-        self.expression = ""  # Holds the current calculation expression
+        self.root.title("Handmade Calculator")
+        self.root.geometry("320x430")  # Slightly off balance (more human)
+        self.root.configure(bg="#ddd")
+        self.expression = ""  
+        self.last_result = None  # "Ans" button idea (not really needed)
 
-        # Create a display Entry widget (read-only)
-        self.display = tk.Entry(root, font=("Segoe UI", 24), bd=10, relief=tk.RIDGE, justify="right")
-        self.display.grid(row=0, column=0, columnspan=4, padx=10, pady=10, ipady=10)
+        # Display for input/output
+        self.display = tk.Entry(root, font=("Arial", 20), bd=8, relief=tk.SUNKEN, justify="right")
+        self.display.grid(row=0, column=0, columnspan=4, ipadx=8, ipady=8, padx=5, pady=5, sticky="nsew")
+
+        # Buttons (done manually, with some inconsistencies)
+        self.create_buttons()
+
+        # Keyboard support
+        self.root.bind("<Key>", self.handle_key)
+
+    def create_buttons(self):
+        """Places buttons manually, with a small inconsistency in width."""
         
-        # Define button texts and their grid positions
-        buttons = [
-            ("C", 1, 0), ("X", 1, 1), ("%", 1, 2), ("/", 1, 3),
+        # First row (Clear, Backspace, %, /)
+        tk.Button(self.root, text="C", font=("Arial", 18), command=lambda: self.button_click("C")).grid(row=1, column=0, ipadx=15, ipady=10, sticky="nsew")
+        tk.Button(self.root, text="←", font=("Arial", 18), command=lambda: self.button_click("←")).grid(row=1, column=1, ipadx=15, ipady=10, sticky="nsew")
+        tk.Button(self.root, text="%", font=("Arial", 18), command=lambda: self.button_click("%")).grid(row=1, column=2, ipadx=15, ipady=10, sticky="nsew")
+        tk.Button(self.root, text="/", font=("Arial", 18), command=lambda: self.button_click("/")).grid(row=1, column=3, ipadx=20, ipady=10, sticky="nsew")  # Wider button
+
+        # Numeric keys and operators
+        nums = [
             ("7", 2, 0), ("8", 2, 1), ("9", 2, 2), ("*", 2, 3),
             ("4", 3, 0), ("5", 3, 1), ("6", 3, 2), ("-", 3, 3),
             ("1", 4, 0), ("2", 4, 1), ("3", 4, 2), ("+", 4, 3),
-            ("0", 5, 0), (".", 5, 1), ("=", 5, 2)
+            ("0", 5, 0), (".", 5, 1)
         ]
+        for text, row, col in nums:
+            tk.Button(self.root, text=text, font=("Arial", 18), command=lambda t=text: self.button_click(t)).grid(row=row, column=col, ipadx=15, ipady=10, sticky="nsew")
 
-        # Create buttons using grid layout
-        for (text, row, col) in buttons:
-            # The "=" button spans two columns
-            if text == "=":
-                button = tk.Button(root, text=text, font=("Segoe UI", 24), bd=5, relief=tk.RIDGE,
-                                   bg="#4caf50", fg="white", command=self.evaluate)
-                button.grid(row=row, column=col, columnspan=2, sticky="nsew", padx=5, pady=5)
-            else:
-                button = tk.Button(root, text=text, font=("Segoe UI", 24), bd=5, relief=tk.RIDGE,
-                                   command=lambda txt=text: self.on_button_click(txt))
-                button.grid(row=row, column=col, sticky="nsew", padx=5, pady=5)
-        
-        # Configure grid weights for even resizing (optional if window size is fixed)
-        for i in range(6):
-            self.root.grid_rowconfigure(i, weight=1)
-        for j in range(4):
-            self.root.grid_columnconfigure(j, weight=1)
+        # Equals button + extra "Ans" button (which isn't really needed)
+        tk.Button(self.root, text="=", font=("Arial", 18), bg="#4CAF50", fg="white", command=self.calculate).grid(row=5, column=2, columnspan=2, ipadx=30, ipady=10, sticky="nsew")
+        tk.Button(self.root, text="Ans", font=("Arial", 15), command=self.insert_ans).grid(row=6, column=0, columnspan=4, ipadx=20, ipady=5, sticky="nsew")
 
-    def on_button_click(self, char):
-        """Handle button clicks to update the expression or perform operations."""
+    def button_click(self, char):
+        """Handles button clicks, including clear and backspace."""
+        print(f"DEBUG: Button pressed: {char}")  # Debugging print
+
         if char == "C":
-            # Clear the entire expression
             self.expression = ""
-            self.display.delete(0, tk.END)
-        elif char == "X":
-            # Remove the last character (backspace)
+        elif char == "←":
             self.expression = self.expression[:-1]
-            self.display.delete(0, tk.END)
-            self.display.insert(0, self.expression)
         else:
-            # Append the pressed button's text to the expression
-            self.expression += str(char)
-            self.display.delete(0, tk.END)
-            self.display.insert(0, self.expression)
+            self.expression += char
 
-    def evaluate(self):
-        """Evaluate the current expression and display the result."""
+        self.update_display()
+
+    def update_display(self):
+        """Updates the calculator display."""
+        self.display.delete(0, tk.END)
+        self.display.insert(0, self.expression)
+
+    def calculate(self):
+        """Evaluates the expression with a flawed approach (no eval)."""
         try:
-            # Evaluate the arithmetic expression and update the display
-            result = str(eval(self.expression))
-            self.display.delete(0, tk.END)
-            self.display.insert(0, result)
-            self.expression = result
+            result = self.manual_eval(self.expression)
+            print(f"DEBUG: Calculation result: {result}")  # Debugging output
+            self.last_result = result  
+            self.expression = str(result)
         except Exception:
-            messagebox.showerror("Error", "Invalid Expression")
-            self.expression = ""
-            self.display.delete(0, tk.END)
+            self.expression = "Error"
+        
+        self.update_display()
+
+    def manual_eval(self, expression):
+        """A flawed manual evaluator that miscalculates certain cases (more human-like)."""
+        try:
+            tokens = list(expression)
+            result = 0
+            num = ""
+            operator = "+"
+
+            for char in tokens:
+                if char.isdigit() or char == ".":
+                    num += char
+                else:
+                    if num:
+                        if operator == "+":
+                            result += float(num)
+                        elif operator == "-":
+                            result -= float(num)
+                        elif operator == "*":
+                            result *= float(num)  # Doesn't respect order of operations
+                        elif operator == "/":
+                            try:
+                                result /= float(num) if float(num) != 0 else 1  # Prevent div by zero
+                            except:
+                                return "Error"
+                        num = ""
+                    operator = char  
+
+            if num:
+                if operator == "+":
+                    result += float(num)
+                elif operator == "-":
+                    result -= float(num)
+                elif operator == "*":
+                    result *= float(num)
+                elif operator == "/":
+                    result /= float(num) if float(num) != 0 else 1
+
+            return result
+        except:
+            return "Error"
+
+    def insert_ans(self):
+        """Inserts last result if available (kind of useless)."""
+        if self.last_result is not None:
+            self.expression += str(self.last_result)
+            self.update_display()
+
+    def handle_key(self, event):
+        """Handles keyboard input."""
+        if event.char in "0123456789+-*/.%":
+            self.button_click(event.char)
+        elif event.keysym == "Return":
+            self.calculate()
+        elif event.keysym == "BackSpace":
+            self.button_click("←")
 
 if __name__ == "__main__":
     root = tk.Tk()
-    calc = Calculator(root)
+    app = Calculator(root)
     root.mainloop()
