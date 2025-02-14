@@ -37,7 +37,7 @@ entry = tk.Entry(temp)
 entry.pack()
 
 conversion_var = tk.StringVar(value="F to C")
-tk.OptionMenu(root, conversion_var, "F to C", "C to F").pack()
+tk.OptionMenu(temp, conversion_var, "F to C", "C to F").pack()
 
 tk.Button(temp, text="Convert", command=convert_temperature).pack()
 result_label = tk.Label(temp, text="", font=("Arial", 14, "bold"))
@@ -45,4 +45,4 @@ result_label.pack()
 
 tk.Button(temp, text="Show Graph", command=show_graph).pack()
 
-root.mainloop()
+temp.mainloop()
