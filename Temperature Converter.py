@@ -29,20 +29,20 @@ def show_graph():
         messagebox.showinfo("Info", "Convert a temperature first.")
 
 # Create GUI
-root = tk.Tk()
-root.title("Temperature Converter")
+temp = tk.Tk()
+temp.title("Temperature Converter")
 
-tk.Label(root, text="Enter Temperature:", font=("Arial", 12)).pack()
-entry = tk.Entry(root)
+tk.Label(temp, text="Enter Temperature:", font=("Arial", 12)).pack()
+entry = tk.Entry(temp)
 entry.pack()
 
 conversion_var = tk.StringVar(value="F to C")
 tk.OptionMenu(root, conversion_var, "F to C", "C to F").pack()
 
-tk.Button(root, text="Convert", command=convert_temperature).pack()
-result_label = tk.Label(root, text="", font=("Arial", 14, "bold"))
+tk.Button(temp, text="Convert", command=convert_temperature).pack()
+result_label = tk.Label(temp, text="", font=("Arial", 14, "bold"))
 result_label.pack()
 
-tk.Button(root, text="Show Graph", command=show_graph).pack()
+tk.Button(temp, text="Show Graph", command=show_graph).pack()
 
 root.mainloop()
