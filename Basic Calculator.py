@@ -62,7 +62,7 @@ class Calculator:
         self.display.insert(0, self.expression)
 
     def calculate(self):
-        """Evaluates the expression with a flawed approach (no eval)."""
+        
         try:
             result = self.manual_eval(self.expression)
             print(f"DEBUG: Calculation result: {result}")  
@@ -115,7 +115,7 @@ class Calculator:
             return "Error"
 
     def insert_ans(self):
-        """Inserts last result if available (kind of useless)."""
+        
         if self.last_result is not None:
             self.expression += str(self.last_result)
             self.update_display()
