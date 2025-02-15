@@ -5,29 +5,29 @@ class Calculator:
     def __init__(self, root):
         self.root = root
         self.root.title("Handmade Calculator")
-        self.root.geometry("320x430")  # Slightly off balance (more human)
+        self.root.geometry("320x430")  
         self.root.configure(bg="#ddd")
         self.expression = ""  
-        self.last_result = None  # "Ans" button idea (not really needed)
+        self.last_result = None  
 
         # Display for input/output
         self.display = tk.Entry(root, font=("Arial", 20), bd=8, relief=tk.SUNKEN, justify="right")
         self.display.grid(row=0, column=0, columnspan=4, ipadx=8, ipady=8, padx=5, pady=5, sticky="nsew")
 
-        # Buttons (done manually, with some inconsistencies)
+        
         self.create_buttons()
 
         # Keyboard support
         self.root.bind("<Key>", self.handle_key)
 
     def create_buttons(self):
-        """Places buttons manually, with a small inconsistency in width."""
+     
         
         # First row (Clear, Backspace, %, /)
         tk.Button(self.root, text="C", font=("Arial", 18), command=lambda: self.button_click("C")).grid(row=1, column=0, ipadx=15, ipady=10, sticky="nsew")
         tk.Button(self.root, text="←", font=("Arial", 18), command=lambda: self.button_click("←")).grid(row=1, column=1, ipadx=15, ipady=10, sticky="nsew")
         tk.Button(self.root, text="%", font=("Arial", 18), command=lambda: self.button_click("%")).grid(row=1, column=2, ipadx=15, ipady=10, sticky="nsew")
-        tk.Button(self.root, text="/", font=("Arial", 18), command=lambda: self.button_click("/")).grid(row=1, column=3, ipadx=20, ipady=10, sticky="nsew")  # Wider button
+        tk.Button(self.root, text="/", font=("Arial", 18), command=lambda: self.button_click("/")).grid(row=1, column=3, ipadx=15, ipady=10, sticky="nsew")  
 
         # Numeric keys and operators
         nums = [
@@ -39,13 +39,13 @@ class Calculator:
         for text, row, col in nums:
             tk.Button(self.root, text=text, font=("Arial", 18), command=lambda t=text: self.button_click(t)).grid(row=row, column=col, ipadx=15, ipady=10, sticky="nsew")
 
-        # Equals button + extra "Ans" button (which isn't really needed)
+        
         tk.Button(self.root, text="=", font=("Arial", 18), bg="#4CAF50", fg="white", command=self.calculate).grid(row=5, column=2, columnspan=2, ipadx=30, ipady=10, sticky="nsew")
         tk.Button(self.root, text="Ans", font=("Arial", 15), command=self.insert_ans).grid(row=6, column=0, columnspan=4, ipadx=20, ipady=5, sticky="nsew")
 
     def button_click(self, char):
         """Handles button clicks, including clear and backspace."""
-        print(f"DEBUG: Button pressed: {char}")  # Debugging print
+        print(f"DEBUG: Button pressed: {char}")  
 
         if char == "C":
             self.expression = ""
@@ -65,7 +65,7 @@ class Calculator:
         """Evaluates the expression with a flawed approach (no eval)."""
         try:
             result = self.manual_eval(self.expression)
-            print(f"DEBUG: Calculation result: {result}")  # Debugging output
+            print(f"DEBUG: Calculation result: {result}")  
             self.last_result = result  
             self.expression = str(result)
         except Exception:
@@ -74,7 +74,7 @@ class Calculator:
         self.update_display()
 
     def manual_eval(self, expression):
-        """A flawed manual evaluator that miscalculates certain cases (more human-like)."""
+    
         try:
             tokens = list(expression)
             result = 0
@@ -91,10 +91,10 @@ class Calculator:
                         elif operator == "-":
                             result -= float(num)
                         elif operator == "*":
-                            result *= float(num)  # Doesn't respect order of operations
+                            result *= float(num)  
                         elif operator == "/":
                             try:
-                                result /= float(num) if float(num) != 0 else 1  # Prevent div by zero
+                                result /= float(num) if float(num) != 0 else 1  
                             except:
                                 return "Error"
                         num = ""
