@@ -1,166 +1,281 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import ttk, messagebox
+import sqlite3
 from PIL import Image, ImageTk
-import json
-import os
-
-CONTACTS_FILE = "contacts.json"
 
 class ContactBook:
     def __init__(self, root):
         self.root = root
         self.root.title("Contact Book")
-        self.root.geometry("610x510")  
-        self.root.configure(bg="#f0f0f0") 
-
-       
-        print("Initializing contact book...")  
-
+        self.root.geometry("800x600")
+        
+        # Database Connection
+        self.conn = sqlite3.connect('contacts.db')
+        self.create_table()
+        
+        # Variables for form fields
+        self.id_var = tk.StringVar()  # Still needed internally
+        self.name_var = tk.StringVar()
+        self.phone_var = tk.StringVar()
+        self.email_var = tk.StringVar()
+        self.search_var = tk.StringVar()
+        
+        # Background Image
+        self.set_background()
+        
+        # Create Widgets
+        self.create_widgets()
+        
+        # Load initial data
+        self.fetch_data()
+    
+    def set_background(self):
         try:
+            # Try to load the image if it exists
             self.bg_image = Image.open("Bg.jpg")
-            self.bg_image = self.bg_image.resize((610, 510), Image.LANCZOS)
-            self.bg_photo = ImageTk.PhotoImage(self.bg_image)
-            self.canvas = tk.Canvas(self.root, width=610, height=510)
-            self.canvas.pack(fill="both", expand=True)
-            self.canvas.create_image(0, 0, image=self.bg_photo, anchor="nw")
-        except Exception as e:
-            print("ALT")
-            self.root.configure(bg="#d9d9d9")  
-
+            self.bg_photo = ImageTk.PhotoImage(self.bg_image.resize((800, 600), Image.LANCZOS))
+            self.bg_label = tk.Label(self.root, image=self.bg_photo)
+            self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        except FileNotFoundError:
+            # If image doesn't exist, use a solid color
+            self.root.configure(bg="#f0f0f0")
+            messagebox.showinfo("Background Image", "No background image found. Using default color.")
+    
+    def create_table(self):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            '''CREATE TABLE IF NOT EXISTS contacts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                phone TEXT,
+                email TEXT
+            )'''
+        )
+        self.conn.commit()
+    
+    def create_widgets(self):
+        # Main Frame
+        main_frame = tk.Frame(self.root, bg='white', bd=5, relief=tk.RIDGE)
+        main_frame.place(x=20, y=20, width=760, height=560)
         
-        self.contact_data = []
-        self.contacts = self.load_contacts()
-
+        # Title
+        title_label = tk.Label(main_frame, text="Contact Management System", 
+                               font=("times new roman", 18, "bold"), bg="white", fg="navy blue")
+        title_label.pack(side=tk.TOP, fill=tk.X)
         
-        self.create_interface()
-
-    def create_interface(self):
-        """Creates all UI elements for the Contact Book."""
-
-        # Frame for contact entry
-        self.frame = tk.Frame(self.root, bg="#ffffff", bd=4, relief=tk.RIDGE)
-        self.frame.place(x=45, y=25, width=510, height=160)
-
-        font_style = ("Arial", 13, "bold")
-
+        # Left Frame for input fields
+        left_frame = tk.LabelFrame(main_frame, text="Contact Details", bg="white",
+                                  font=("times new roman", 12, "bold"), fg="navy blue", bd=4, relief=tk.RIDGE)
+        left_frame.place(x=20, y=50, width=330, height=480)
         
-        print("Creating entry fields...")  
-
-        # Labels & Entry Fields
-        tk.Label(self.frame, text="Full Name:", font=font_style, bg="white").grid(row=0, column=0, padx=10, pady=3, sticky="w")
-        self.name_entry = tk.Entry(self.frame, font=("Arial", 12), width=26, bd=2, relief=tk.SUNKEN)
-        self.name_entry.grid(row=0, column=1, padx=10, pady=3)
-
-        tk.Label(self.frame, text="Phone Number:", font=font_style, bg="white").grid(row=1, column=0, padx=10, pady=3, sticky="w")
-        self.phone_entry = tk.Entry(self.frame, font=("Arial", 12), width=26, bd=2, relief=tk.SUNKEN)
-        self.phone_entry.grid(row=1, column=1, padx=10, pady=3)
-
-        tk.Label(self.frame, text="Email Address:", font=font_style, bg="white").grid(row=2, column=0, padx=10, pady=3, sticky="w")
-        self.email_entry = tk.Entry(self.frame, font=("Arial", 12), width=26, bd=2, relief=tk.SUNKEN)
-        self.email_entry.grid(row=2, column=1, padx=10, pady=3)
-
-        # Add Button
-        self.add_button = tk.Button(self.frame, text="➕ Add Contact", command=self.add_contact, bg="#4CAF50", fg="white", font=("Arial", 12))
-        self.add_button.grid(row=3, column=0, columnspan=2, pady=8, ipadx=15, ipady=2)
-
-        # Contact List Display
-        self.list_frame = tk.Frame(self.root, bg="white")
-        self.list_frame.place(x=45, y=200, width=510, height=250)
-
-        self.contact_list = ttk.Treeview(self.list_frame, columns=("Name", "Phone", "Email"), show="headings")
-        self.contact_list.heading("Name", text="Name")
-        self.contact_list.heading("Phone", text="Phone")
-        self.contact_list.heading("Email", text="Email")
-        self.contact_list.column("Name", width=170)
-        self.contact_list.column("Phone", width=130)
-        self.contact_list.column("Email", width=180)
-        self.contact_list.pack(fill="both", expand=True)
-
-        self.contact_list.bind("<Double-1>", self.load_selected_contact)
-
-        # Delete Button
-        self.delete_button = tk.Button(self.root, text="❌ Delete", command=self.delete_contact, bg="red", fg="white", font=("Arial", 12))
-        self.delete_button.place(x=45, y=460, width=160, height=30)
-
-        self.refresh_list()
-
-    def load_contacts(self):
-        """Loads contacts from a JSON file."""
-        if os.path.exists(CONTACTS_FILE):
+        # Input fields
+        # Name
+        lbl_name = tk.Label(left_frame, text="Name:", bg="white", font=("times new roman", 12, "bold"))
+        lbl_name.grid(row=0, column=0, padx=10, pady=20, sticky="w")
+        
+        entry_name = tk.Entry(left_frame, textvariable=self.name_var, font=("times new roman", 12), width=15)
+        entry_name.grid(row=0, column=1, padx=10, pady=20, sticky="w")
+        
+        # Phone
+        lbl_phone = tk.Label(left_frame, text="Phone:", bg="white", font=("times new roman", 12, "bold"))
+        lbl_phone.grid(row=1, column=0, padx=10, pady=20, sticky="w")
+        
+        entry_phone = tk.Entry(left_frame, textvariable=self.phone_var, font=("times new roman", 12), width=15)
+        entry_phone.grid(row=1, column=1, padx=10, pady=20, sticky="w")
+        
+        # Email
+        lbl_email = tk.Label(left_frame, text="Email:", bg="white", font=("times new roman", 12, "bold"))
+        lbl_email.grid(row=2, column=0, padx=10, pady=20, sticky="w")
+        
+        entry_email = tk.Entry(left_frame, textvariable=self.email_var, font=("times new roman", 12), width=15)
+        entry_email.grid(row=2, column=1, padx=10, pady=20, sticky="w")
+        
+        # Button Frame
+        btn_frame = tk.Frame(left_frame, bg="white", bd=2, relief=tk.RIDGE)
+        btn_frame.place(x=10, y=320, width=290, height=100)
+        
+        # Buttons
+        add_btn = tk.Button(btn_frame, text="Add", command=self.add_data, width=8, font=("times new roman", 10, "bold"), bg="green", fg="white")
+        add_btn.grid(row=0, column=0, padx=10, pady=20)
+        
+        update_btn = tk.Button(btn_frame, text="Update", command=self.update_data, width=8, font=("times new roman", 10, "bold"), bg="blue", fg="white")
+        update_btn.grid(row=0, column=1, padx=10, pady=20)
+        
+        delete_btn = tk.Button(btn_frame, text="Delete", command=self.delete_data, width=8, font=("times new roman", 10, "bold"), bg="red", fg="white")
+        delete_btn.grid(row=0, column=2, padx=10, pady=20)
+        
+        clear_btn = tk.Button(btn_frame, text="Clear", command=self.clear, width=8, font=("times new roman", 10, "bold"), bg="orange", fg="white")
+        clear_btn.grid(row=1, column=1, padx=10, pady=20)
+        
+        # Right Frame for displaying data
+        right_frame = tk.LabelFrame(main_frame, text="Contact List", bg="white",
+                                   font=("times new roman", 12, "bold"), fg="navy blue", bd=4, relief=tk.RIDGE)
+        right_frame.place(x=370, y=50, width=370, height=480)
+        
+        # Search Frame
+        search_frame = tk.Frame(right_frame, bg="white", bd=2, relief=tk.RIDGE)
+        search_frame.place(x=10, y=10, width=350, height=60)
+        
+        lbl_search = tk.Label(search_frame, text="Search By Name:", bg="white", font=("times new roman", 11, "bold"))
+        lbl_search.grid(row=0, column=0, padx=5, pady=10, sticky="w")
+        
+        entry_search = tk.Entry(search_frame, textvariable=self.search_var, font=("times new roman", 11), width=15)
+        entry_search.grid(row=0, column=1, padx=5, pady=10, sticky="w")
+        
+        search_btn = tk.Button(search_frame, text="Search", command=self.search_data, width=6, font=("times new roman", 10, "bold"), bg="blue", fg="white")
+        search_btn.grid(row=0, column=2, padx=5, pady=10)
+        
+        show_all_btn = tk.Button(search_frame, text="Show All", command=self.fetch_data, width=6, font=("times new roman", 10, "bold"), bg="green", fg="white")
+        show_all_btn.grid(row=0, column=3, padx=5, pady=10)
+        
+        # Table Frame
+        table_frame = tk.Frame(right_frame, bd=2, relief=tk.RIDGE, bg="white")
+        table_frame.place(x=10, y=80, width=350, height=370)
+        
+        scroll_x = tk.Scrollbar(table_frame, orient=tk.HORIZONTAL)
+        scroll_y = tk.Scrollbar(table_frame, orient=tk.VERTICAL)
+        
+        self.contact_table = ttk.Treeview(table_frame, columns=("id", "name", "phone", "email"),
+                                         xscrollcommand=scroll_x.set, yscrollcommand=scroll_y.set)
+        
+        scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+        scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        scroll_x.config(command=self.contact_table.xview)
+        scroll_y.config(command=self.contact_table.yview)
+        
+        self.contact_table.heading("id", text="ID")
+        self.contact_table.heading("name", text="Name")
+        self.contact_table.heading("phone", text="Phone")
+        self.contact_table.heading("email", text="Email")
+        
+        self.contact_table['show'] = 'headings'
+        
+        self.contact_table.column("id", width=30)
+        self.contact_table.column("name", width=100)
+        self.contact_table.column("phone", width=100)
+        self.contact_table.column("email", width=100)
+        
+        self.contact_table.pack(fill=tk.BOTH, expand=1)
+        
+        # Bind the table for row selection
+        self.contact_table.bind("<ButtonRelease-1>", self.get_cursor)
+    
+    def add_data(self):
+        if self.name_var.get() == "":
+            messagebox.showerror("Error", "Name is required")
+        else:
             try:
-                with open(CONTACTS_FILE, "r") as file:
-                    return json.load(file)
-            except json.JSONDecodeError:
-                print("ErroR")
-                return []
-        return []
-
-    def save_contacts(self):
-        """Saves contacts to a JSON file."""
-        with open(CONTACTS_FILE, "w") as file:
-            json.dump(self.contacts, file, indent=4)
-
-    def add_contact(self):
-        """Adds a new contact (but forgot to handle duplicates)."""
-        name = self.name_entry.get().strip()
-        phone = self.phone_entry.get().strip()
-        email = self.email_entry.get().strip()
-
-        if not name or not phone or not email:
-            messagebox.showwarning( "Please fill out all fields!")
-            return
-
-        
-        self.contacts.append({"name": name, "phone": phone, "email": email})
-        self.save_contacts()
-        self.refresh_list()
-        self.clear_entries()
-
-    def refresh_list(self):
-        """Refreshes the displayed contact list."""
-        for row in self.contact_list.get_children():
-            self.contact_list.delete(row)
-
-        for contact in self.contacts:
-            self.contact_list.insert("", "end", values=(contact["name"], contact["phone"], contact["email"]))
-
-    def clear_entries(self):
-        """Clears input fields."""
-        self.name_entry.delete(0, tk.END)
-        self.phone_entry.delete(0, tk.END)
-        self.email_entry.delete(0, tk.END)
-
-    def load_selected_contact(self, event):
-        """Loads a selected contact into the form for editing."""
-        selected = self.contact_list.selection()
-        if not selected:
-            return
-
-        item = self.contact_list.item(selected)
-        name, phone, email = item["values"]
-
-        self.name_entry.delete(0, tk.END)
-        self.name_entry.insert(0, name)
-
-        self.phone_entry.delete(0, tk.END)
-        self.phone_entry.insert(0, phone)
-
-        self.email_entry.delete(0, tk.END)
-        self.email_entry.insert(0, email)
-
-    def delete_contact(self):
-        """Deletes a selected contact."""
-        selected = self.contact_list.selection()
-        if not selected:
-            messagebox.showwarning("Delete Error", "No contact selected!")
-            return
-
-        item = self.contact_list.item(selected)
-        name = item["values"][0]
-
-        self.contacts = [contact for contact in self.contacts if contact["name"] != name]
-        self.save_contacts()
-        self.refresh_list()
+                cursor = self.conn.cursor()
+                cursor.execute(
+                    "INSERT INTO contacts (name, phone, email) VALUES (?, ?, ?)",
+                    (
+                        self.name_var.get(),
+                        self.phone_var.get(),
+                        self.email_var.get(),
+                    )
+                )
+                self.conn.commit()
+                self.fetch_data()
+                self.clear()
+                messagebox.showinfo("Success", "Contact added successfully")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error adding contact: {str(e)}")
+    
+    def fetch_data(self):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT * FROM contacts")
+            rows = cursor.fetchall()
+            
+            if len(rows) > 0:
+                self.contact_table.delete(*self.contact_table.get_children())
+                for row in rows:
+                    self.contact_table.insert('', tk.END, values=row)
+                    
+            self.conn.commit()
+        except Exception as e:
+            messagebox.showerror("Error", f"Error fetching data: {str(e)}")
+    
+    def get_cursor(self, event=""):
+        try:
+            cursor_row = self.contact_table.focus()
+            content = self.contact_table.item(cursor_row)
+            row = content['values']
+            
+            if len(row) > 0:
+                self.id_var.set(row[0])
+                self.name_var.set(row[1])
+                self.phone_var.set(row[2])
+                self.email_var.set(row[3])
+        except Exception as e:
+            pass
+    
+    def update_data(self):
+        if self.id_var.get() == "":
+            messagebox.showerror("Error", "Select a contact to update")
+        else:
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute(
+                    "UPDATE contacts SET name=?, phone=?, email=? WHERE id=?",
+                    (
+                        self.name_var.get(),
+                        self.phone_var.get(),
+                        self.email_var.get(),
+                        self.id_var.get(),
+                    )
+                )
+                self.conn.commit()
+                self.fetch_data()
+                self.clear()
+                messagebox.showinfo("Success", "Contact updated successfully")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error updating contact: {str(e)}")
+    
+    def delete_data(self):
+        if self.id_var.get() == "":
+            messagebox.showerror("Error", "Select a contact to delete")
+        else:
+            try:
+                confirm = messagebox.askyesno("Confirm", "Are you sure you want to delete this contact?")
+                if confirm:
+                    cursor = self.conn.cursor()
+                    cursor.execute("DELETE FROM contacts WHERE id=?", (self.id_var.get(),))
+                    self.conn.commit()
+                    self.fetch_data()
+                    self.clear()
+                    messagebox.showinfo("Success", "Contact deleted successfully")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error deleting contact: {str(e)}")
+    
+    def clear(self):
+        self.id_var.set("")
+        self.name_var.set("")
+        self.phone_var.set("")
+        self.email_var.set("")
+    
+    def search_data(self):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT * FROM contacts WHERE name LIKE ?", ('%' + self.search_var.get() + '%',))
+            rows = cursor.fetchall()
+            
+            if len(rows) > 0:
+                self.contact_table.delete(*self.contact_table.get_children())
+                for row in rows:
+                    self.contact_table.insert('', tk.END, values=row)
+                
+                self.conn.commit()
+            else:
+                messagebox.showinfo("Info", "No matching records found")
+                self.fetch_data()
+        except Exception as e:
+            messagebox.showerror("Error", f"Error searching data: {str(e)}")
+    
+    def __del__(self):
+        if hasattr(self, 'conn'):
+            self.conn.close()
 
 if __name__ == "__main__":
     root = tk.Tk()
