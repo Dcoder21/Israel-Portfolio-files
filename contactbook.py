@@ -14,7 +14,7 @@ class ContactBook:
         self.create_table()
         
         # Variables for form fields
-        self.id_var = tk.StringVar()  # Still needed internally
+        self.id_var = tk.StringVar() 
         self.name_var = tk.StringVar()
         self.phone_var = tk.StringVar()
         self.email_var = tk.StringVar()
